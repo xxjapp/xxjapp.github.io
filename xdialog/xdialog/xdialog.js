@@ -50,6 +50,51 @@ window.xdialog = function() {
     // all transitions should end in 1 second, then some cleanup work or fix will be done
     let transitionTimeout = 1000;
 
+    let spinOverlayElement = createSpin();
+    let spinCount = 0;
+
+    let dragAsClick = {
+        timeout: 300,
+        distance: 5
+    }
+
+    return {
+        // xdialog.init(options)
+        // initialize xdialog
+        // options.zIndex0 - initial z index to use, default value is 10000
+        init: init,
+
+        // xdialog.create(options)
+        // create a dialog
+        // SEE: [default options](#default_options)
+        create: create,
+
+        // xdialog.open(options)
+        // create a dialog and show it
+        // SEE: [default options](#default_options)
+        open: open,
+
+        // xdialog.alert(text, options)
+        // display an alert dialog, please view the source for details
+        alert: alert,
+
+        // xdialog.confirm(text, onyes, options)
+        // display a confirm dialog, please view the source for details
+        confirm: confirm,
+
+        // xdialog.dialogs()
+        // get all dialog instances
+        dialogs: dialogs,
+
+        // xdialog.startSpin()
+        // start spin animation
+        startSpin: startSpin,
+
+        // xdialog.stopSpin()
+        // stop spin animation
+        stopSpin: stopSpin,
+    };
+
     function defaultOptions() {
         return {
             // dialog title
@@ -150,11 +195,12 @@ window.xdialog = function() {
         };
     }
 
-    function callbackParam(dialogElement, dialog, event) {
+    function callbackParam(dialogElement, dialog, overlayElement, event) {
         return {
             id: dialogElement.id,
             element: dialogElement,
             dialog: dialog,
+            overlay: overlayElement,
             event: event
         };
     }
@@ -249,7 +295,7 @@ window.xdialog = function() {
         return overlayElement;
     }
 
-    function createDialog(options) {
+    function createDialog(options, overlayElement) {
         // create element
         let dialogElement = document.createElement('div');
         let effect = getEffect(options.effect);
@@ -277,9 +323,9 @@ window.xdialog = function() {
         innerHTML += '</div>';
         dialogElement.innerHTML = innerHTML;
 
-        options.beforecreate && options.beforecreate(callbackParam(dialogElement, null, null));
+        options.beforecreate && options.beforecreate(callbackParam(dialogElement, null, overlayElement, null));
         document.body.insertAdjacentElement('afterbegin', dialogElement);
-        options.aftercreate && options.aftercreate(callbackParam(dialogElement, null, null));
+        options.aftercreate && options.aftercreate(callbackParam(dialogElement, null, overlayElement, null));
 
         return dialogElement;
     }
@@ -382,22 +428,61 @@ window.xdialog = function() {
         let overlayElement = null;
         options.modal && (overlayElement = createOverlay());
 
-        let dialogElement = createDialog(options);
+        let dialogElement = createDialog(options, overlayElement);
         let okButton = dialogElement.querySelector('.xd-ok');
         let cancelButton = dialogElement.querySelector('.xd-cancel');
         let deleteButton = dialogElement.querySelector('.xd-delete');
 
         dragElement(dialogElement)
 
+        if (overlayElement) {
+            dragElement(dialogElement, overlayElement, doCancel);
+        }
+
         okButton && okButton.addEventListener('click', doOk);
         cancelButton && cancelButton.addEventListener('click', doCancel);
         deleteButton && deleteButton.addEventListener('click', doDelete);
 
-        overlayElement && overlayElement.addEventListener('click', doCancel);
-
         // load all iframes before showing
         let preparedForShow = false;
         handleIFrame();
+
+        dialog = {
+            // dialog.id
+            // dialog html element id
+            id: dialogElement.id,
+
+            // dialog.element
+            // dialog html element
+            element: dialogElement,
+
+            // dialog.show()
+            // show dialog
+            show: show,
+
+            // dialog.hide()
+            // hide dialog
+            hide: hide,
+
+            // dialog.destroy()
+            // destroy dialog
+            destroy: destroy,
+
+            // dialog.close()
+            // hide dialog and destory it
+            close: close,
+
+            // dialog.adjust()
+            // adjust dialog to make the whole dialog visible
+            adjust: adjust,
+
+            // dialog.fixChromeBlur()
+            // fix chrome blur
+            fixChromeBlur: fixChromeBlur
+        };
+
+        dialogs.push(dialog);
+        return dialog;
 
         function handleIFrame() {
             let iframes = dialogElement.querySelectorAll('iframe');
@@ -426,9 +511,9 @@ window.xdialog = function() {
 
             function checkStatusAndShow() {
                 if (preparedForShow) {
-                    options.beforeshow && options.beforeshow(callbackParam(dialogElement, dialog, event));
+                    options.beforeshow && options.beforeshow(callbackParam(dialogElement, dialog, overlayElement, event));
                     showMe();
-                    options.aftershow && options.aftershow(callbackParam(dialogElement, dialog, event));
+                    options.aftershow && options.aftershow(callbackParam(dialogElement, dialog, overlayElement, event));
                 } else {
                     // wait for preparedForShow
                     setTimeout(checkStatusAndShow, 0);
@@ -448,6 +533,8 @@ window.xdialog = function() {
 
                     dialogElement.classList.add('xd-show');
                     overlayElement && overlayElement.classList.add('xd-show-overlay');
+
+                    listenEscKey();
                 }, 200);
 
                 // NOTE: fix chrome blur
@@ -475,6 +562,7 @@ window.xdialog = function() {
         }
 
         function hide() {
+            unlistenEscKey();
             restorePerspectiive();
 
             if (dialogElement.effect.perspective) {
@@ -489,6 +577,27 @@ window.xdialog = function() {
 
             dialogElement.classList.remove('xd-show');
             overlayElement && overlayElement.classList.remove('xd-show-overlay');
+        }
+
+        function listenEscKey() {
+            dialogElement.escKeyListener = function listener(ev) {
+                if (ev.key !== 'Escape' && ev.key !== 'Esc') {
+                    return;
+                }
+
+                let topMostDialogElement = document.querySelector('.xd-dialog.xd-show');
+
+                if (topMostDialogElement === dialogElement) {
+                    doCancel(ev);
+                }
+            };
+
+            document.addEventListener('keyup', dialogElement.escKeyListener);
+        }
+
+        function unlistenEscKey() {
+            document.removeEventListener('keyup', dialogElement.escKeyListener);
+            dialogElement.escKeyListener = null;
         }
 
         function fixChromeBlur() {
@@ -515,7 +624,7 @@ window.xdialog = function() {
         }
 
         function doOk(e) {
-            if (options.onok && options.onok(callbackParam(dialogElement, dialog, e)) === false) {
+            if (options.onok && options.onok(callbackParam(dialogElement, dialog, overlayElement, e)) === false) {
                 return;
             }
 
@@ -523,7 +632,7 @@ window.xdialog = function() {
         }
 
         function doCancel(e) {
-            if (options.oncancel && options.oncancel(callbackParam(dialogElement, dialog, e)) === false) {
+            if (options.oncancel && options.oncancel(callbackParam(dialogElement, dialog, overlayElement, e)) === false) {
                 return;
             }
 
@@ -531,7 +640,7 @@ window.xdialog = function() {
         }
 
         function doDelete(e) {
-            if (options.ondelete && options.ondelete(callbackParam(dialogElement, dialog, e)) === false) {
+            if (options.ondelete && options.ondelete(callbackParam(dialogElement, dialog, overlayElement, e)) === false) {
                 return;
             }
 
@@ -539,15 +648,13 @@ window.xdialog = function() {
         }
 
         function destroy() {
-            if (options.ondestroy && options.ondestroy(callbackParam(dialogElement, dialog, null)) === false) {
+            if (options.ondestroy && options.ondestroy(callbackParam(dialogElement, dialog, overlayElement, null)) === false) {
                 return;
             }
 
             okButton && okButton.removeEventListener('click', doOk);
             cancelButton && cancelButton.removeEventListener('click', doCancel);
             deleteButton && deleteButton.removeEventListener('click', doDelete);
-
-            overlayElement && overlayElement.removeEventListener('click', doCancel);
 
             setTimeout(function() {
                 let index = dialogs.indexOf(dialog);
@@ -597,115 +704,6 @@ window.xdialog = function() {
                 dialogElement.style.transition = '';
             });
         }
-
-        // SEE: https://www.w3schools.com/howto/howto_js_draggable.asp
-        function dragElement(dialogElement) {
-            let pos1 = 0,
-                pos2 = 0,
-                pos3 = 0,
-                pos4 = 0;
-            let titleElement = dialogElement.querySelector('.xd-title');
-
-            // if titleElement present, the header is where you move the dialog,
-            // otherwise, move the dialog from anywhere inside the dialog
-            let dragTarget = titleElement || dialogElement;
-
-            dragTarget.onmousedown = dragMouseDown;
-            dragTarget.style.cursor = 'move';
-
-            function isDraggableElement(element) {
-                // do not start drag when click on buttons and ...
-                if (element.tagName === 'BUTTON') {
-                    return false;
-                }
-
-                return dragTarget.contains(element);
-            }
-
-            function dragMouseDown(e) {
-                if (!isDraggableElement(e.target)) {
-                    return;
-                }
-
-                e.preventDefault();
-
-                // get the mouse cursor position at startup:
-                pos3 = e.clientX;
-                pos4 = e.clientY;
-
-                // call a function whenever the cursor moves:
-                document.onmousemove = elementDrag;
-                document.onmouseup = closeDragElement;
-
-                // Temporarily disable mouse events for IFRAME for smooth dragging
-                // SEE: https://www.gyrocode.com/articles/how-to-detect-mousemove-event-over-iframe-element/
-                document.querySelectorAll('.xd-body iframe').forEach(function(iframe) {
-                    iframe.style['pointer-events'] = 'none';
-                });
-            }
-
-            function elementDrag(e) {
-                e.preventDefault();
-
-                // calculate the new cursor position:
-                pos1 = pos3 - e.clientX;
-                pos2 = pos4 - e.clientY;
-                pos3 = e.clientX;
-                pos4 = e.clientY;
-
-                // set the dialogElement's new position:
-                dialogElement.style.top = (dialogElement.offsetTop - pos2) + 'px';
-                dialogElement.style.left = (dialogElement.offsetLeft - pos1) + 'px';
-            }
-
-            function closeDragElement() {
-                // stop moving when mouse button is released:
-                document.onmouseup = null;
-                document.onmousemove = null;
-
-                // Re-enable mouse events for IFRAME
-                document.querySelectorAll('.xd-body iframe').forEach(function(iframe) {
-                    iframe.style['pointer-events'] = 'auto';
-                });
-            }
-        }
-
-        dialog = {
-            // dialog.id
-            // dialog html element id
-            id: dialogElement.id,
-
-            // dialog.element
-            // dialog html element
-            element: dialogElement,
-
-            // dialog.show()
-            // show dialog
-            show: show,
-
-            // dialog.hide()
-            // hide dialog
-            hide: hide,
-
-            // dialog.destroy()
-            // destroy dialog
-            destroy: destroy,
-
-            // dialog.close()
-            // hide dialog and destory it
-            close: close,
-
-            // dialog.adjust()
-            // adjust dialog to make the whole dialog visible
-            adjust: adjust,
-
-            // dialog.fixChromeBlur()
-            // fix chrome blur
-            fixChromeBlur: fixChromeBlur
-        };
-
-        dialogs.push(dialog);
-        return dialog;
     }
 
     function open(options) {
@@ -722,25 +720,6 @@ window.xdialog = function() {
     function confirm(text, onyes, options) {
         options = Object.assign(defaultConfirmOptions(text, onyes), options);
         return open(options);
-    }
-
-    let spinOverlayElement = createSpin();
-    let spinCount = 0;
-
-    function startSpin() {
-        if (spinCount === 0) {
-            spinOverlayElement.classList.add('xd-show-overlay');
-        }
-
-        spinCount++;
-    }
-
-    function stopSpin() {
-        spinCount--;
-
-        if (spinCount === 0) {
-            spinOverlayElement.classList.remove('xd-show-overlay');
-        }
     }
 
     function createSpin() {
@@ -767,40 +746,109 @@ window.xdialog = function() {
         return spinOverlayElement;
     }
 
-    return {
-        // xdialog.init(options)
-        // initialize xdialog
-        // options.zIndex0 - initial z index to use, default value is 10000
-        init: init,
+    function startSpin() {
+        if (spinCount === 0) {
+            spinOverlayElement.classList.add('xd-show-overlay');
+        }
 
-        // xdialog.create(options)
-        // create a dialog
-        // SEE: [default options](#default_options)
-        create: create,
+        spinCount++;
+    }
 
-        // xdialog.open(options)
-        // create a dialog and show it
-        // SEE: [default options](#default_options)
-        open: open,
+    function stopSpin() {
+        spinCount--;
 
-        // xdialog.alert(text, options)
-        // display an alert dialog, please view the source for details
-        alert: alert,
+        if (spinCount === 0) {
+            spinOverlayElement.classList.remove('xd-show-overlay');
+        }
+    }
 
-        // xdialog.confirm(text, onyes, options)
-        // display a confirm dialog, please view the source for details
-        confirm: confirm,
+    /**
+     * drag on srcElement to move destElement
+     *
+     * @param {Element} destElement - element to be moved
+     * @param {Element} srcElement - element to drag on
+     * @param {Function} onclick - callback function when user clicked
+     *
+     * SEE: https://www.w3schools.com/howto/howto_js_draggable.asp
+     */
+    function dragElement(destElement, srcElement, onclick) {
+        // use destElement as srcElement if srcElement not supplied
+        srcElement = srcElement || destElement;
 
-        // xdialog.dialogs()
-        // get all dialog instances
-        dialogs: dialogs,
+        srcElement.addEventListener('mousedown', dragMouseDown);
 
-        // xdialog.startSpin()
-        // start spin animation
-        startSpin: startSpin,
+        let pos1 = 0,
+            pos2 = 0,
+            pos3 = 0,
+            pos4 = 0;
+        let mouseDownEvent = null;
 
-        // xdialog.stopSpin()
-        // stop spin animation
-        stopSpin: stopSpin,
-    };
+        function isDraggableElement(element) {
+            // do not start drag when click on inputs
+            if (element instanceof HTMLInputElement) {
+                return false;
+            }
+
+            // do not start drag when click on buttons and ...
+            if (['BUTTON'].indexOf(element.tagName) >= 0) {
+                return false;
+            }
+
+            return srcElement.contains(element);
+        }
+
+        function dragMouseDown(e) {
+            mouseDownEvent = e;
+
+            if (!isDraggableElement(e.target)) {
+                return;
+            }
+
+            e.preventDefault();
+
+            // get the mouse cursor position at startup:
+            pos3 = e.clientX;
+            pos4 = e.clientY;
+
+            // call a function whenever the cursor moves:
+            document.addEventListener('mousemove', elementDrag);
+            document.addEventListener('mouseup', closeDragElement);
+
+            // Temporarily disable mouse events for IFRAME for smooth dragging
+            // SEE: https://www.gyrocode.com/articles/how-to-detect-mousemove-event-over-iframe-element/
+            [].slice.call(srcElement.querySelectorAll('iframe')).forEach(function(iframe) {
+                iframe.style['pointer-events'] = 'none';
+            });
+        }
+
+        function elementDrag(e) {
+            e.preventDefault();
+
+            // calculate the new cursor position:
+            pos1 = pos3 - e.clientX;
+            pos2 = pos4 - e.clientY;
+            pos3 = e.clientX;
+            pos4 = e.clientY;
+
+            // set the destElement's new position:
+            destElement.style.top = (destElement.offsetTop - pos2) + 'px';
+            destElement.style.left = (destElement.offsetLeft - pos1) + 'px';
+        }
+
+        function closeDragElement(e) {
+            // trigger click when dragging a litter quickly
+            if (Math.abs(e.clientX - mouseDownEvent.clientX) + Math.abs(e.clientY - mouseDownEvent.clientY) < dragAsClick.distance && e.timeStamp - mouseDownEvent.timeStamp < dragAsClick.timeout) {
+                onclick && onclick(e);
+            }
+
+            // stop moving when mouse button is released:
+            document.removeEventListener('mousemove', elementDrag);
+            document.removeEventListener('mouseup', closeDragElement);
+
+            // Re-enable mouse events for IFRAME
+            [].slice.call(srcElement.querySelectorAll('iframe')).forEach(function(iframe) {
+                iframe.style['pointer-events'] = 'auto';
+            });
+        }
+    }
 }();
