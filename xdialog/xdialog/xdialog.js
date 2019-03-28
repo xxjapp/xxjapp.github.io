@@ -166,12 +166,14 @@ window.xdialog = function() {
             modal: true,
 
             // callback when dialog element is about to be created
+            // return false to stop creating process
             beforecreate: null,
 
             // callback when dialog element has been created
             aftercreate: null,
 
             // callback before show
+            // return false to stop showing process
             beforeshow: null,
 
             // callback after show
@@ -192,6 +194,12 @@ window.xdialog = function() {
             // callback when dialog is about to be destroyed
             // return false to avoid to be destroyed
             ondestroy: null,
+
+            // callback when drag will start
+            // return false to avoid being dragged by default process
+            // return true to allow being dragged
+            // otherwise to go default process
+            ondrag: null,
         };
     }
 
@@ -323,7 +331,12 @@ window.xdialog = function() {
         innerHTML += '</div>';
         dialogElement.innerHTML = innerHTML;
 
-        options.beforecreate && options.beforecreate(callbackParam(dialogElement, null, overlayElement, null));
+        if (options.beforecreate) {
+            if (options.beforecreate(callbackParam(dialogElement, null, overlayElement, null)) === false) {
+                return null;
+            }
+        }
+
         document.body.insertAdjacentElement('afterbegin', dialogElement);
         options.aftercreate && options.aftercreate(callbackParam(dialogElement, null, overlayElement, null));
 
@@ -429,14 +442,19 @@ window.xdialog = function() {
         options.modal && (overlayElement = createOverlay());
 
         let dialogElement = createDialog(options, overlayElement);
+
+        if (dialogElement === null) {
+            return null;
+        }
+
         let okButton = dialogElement.querySelector('.xd-ok');
         let cancelButton = dialogElement.querySelector('.xd-cancel');
         let deleteButton = dialogElement.querySelector('.xd-delete');
 
-        dragElement(dialogElement)
+        dragElement(options.ondrag, dialogElement)
 
         if (overlayElement) {
-            dragElement(dialogElement, overlayElement, doCancel);
+            dragElement(options.ondrag, dialogElement, overlayElement, doCancel);
         }
 
         okButton && okButton.addEventListener('click', doOk);
@@ -511,9 +529,14 @@ window.xdialog = function() {
 
             function checkStatusAndShow() {
                 if (preparedForShow) {
-                    options.beforeshow && options.beforeshow(callbackParam(dialogElement, dialog, overlayElement, event));
+                    if (options.beforeshow) {
+                        if (options.beforeshow(callbackParam(dialogElement, dialog, overlayElement, null)) === false) {
+                            return;
+                        }
+                    }
+
                     showMe();
-                    options.aftershow && options.aftershow(callbackParam(dialogElement, dialog, overlayElement, event));
+                    options.aftershow && options.aftershow(callbackParam(dialogElement, dialog, overlayElement, null));
                 } else {
                     // wait for preparedForShow
                     setTimeout(checkStatusAndShow, 0);
@@ -680,7 +703,7 @@ window.xdialog = function() {
             let clientWidth = document.documentElement.clientWidth;
             let clientHeight = document.documentElement.clientHeight;
 
-            if (rect.x >= 0 && rect.y >= 0 && rect.right <= clientWidth && rect.bottom <= clientHeight) {
+            if (rect.left >= 0 && rect.top >= 0 && rect.right <= clientWidth && rect.bottom <= clientHeight) {
                 return;
             }
 
@@ -707,9 +730,14 @@ window.xdialog = function() {
     }
 
     function open(options) {
-        let dialogElement = create(options);
-        dialogElement.show();
-        return dialogElement;
+        let dialog = create(options);
+
+        if (dialog) {
+            dialog.show();
+            return dialog;
+        }
+
+        return null;
     }
 
     function alert(text, options) {
@@ -771,7 +799,7 @@ window.xdialog = function() {
      *
      * SEE: https://www.w3schools.com/howto/howto_js_draggable.asp
      */
-    function dragElement(destElement, srcElement, onclick) {
+    function dragElement(ondrag, destElement, srcElement, onclick) {
         // use destElement as srcElement if srcElement not supplied
         srcElement = srcElement || destElement;
 
@@ -783,24 +811,33 @@ window.xdialog = function() {
             pos4 = 0;
         let mouseDownEvent = null;
 
+        // SEE: https://api.jquery.com/input-selector/
         function isDraggableElement(element) {
+            if (ondrag) {
+                let res = ondrag(element, destElement, srcElement);
+
+                if (res === false || res === true) {
+                    return res;
+                }
+            }
+
             // do not start drag when click on inputs
             if (element instanceof HTMLInputElement) {
                 return false;
             }
 
-            // do not start drag when click on buttons and ...
-            if (['BUTTON'].indexOf(element.tagName) >= 0) {
+            // do not start drag when click on buttons, selects and textareas
+            if (['BUTTON', 'SELECT', 'TEXTAREA'].indexOf(element.tagName) >= 0) {
                 return false;
             }
 
-            return srcElement.contains(element);
+            return true;
         }
 
         function dragMouseDown(e) {
             mouseDownEvent = e;
 
-            if (!isDraggableElement(e.target)) {
+            if (isDraggableElement(e.target) === false) {
                 return;
             }
 
