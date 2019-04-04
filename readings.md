@@ -6,7 +6,7 @@
 
     本教程适合初学者当作 JavaScript 语言入门教程，也适合当作日常使用的参考手册。
 
-    [javascript](javascript)
+    [摘要](javascript)
 
 2. [ECMAScript 6 入门](http://es6.ruanyifeng.com/)
 
