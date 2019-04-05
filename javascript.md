@@ -638,3 +638,174 @@
     - 所谓 Base64 就是一种编码方法，可以将任意值转成 0～9、A～Z、a-z、+和/这64个字符组成的可打印字符。使用它的主要目的，不是为了加密，而是为了不出现特殊字符，简化程序的处理
 
 8. [对象](https://wangdoc.com/javascript/types/object.html)
+
+    - 对象（object）是 JavaScript 语言的核心概念，也是最重要的数据类型。
+
+    - 对象的所有键名都是字符串（ES6 又引入了 Symbol 值也可以作为键名），所以加不加引号都可以。
+
+    - 如果键名是数值，会被自动转为字符串。
+
+    - 对象的每一个键名又称为“属性”（property），它的“键值”可以是任何数据类型。如果一个属性的值为函数，通常把这个属性称为“方法”，它可以像函数那样调用。
+
+    - 对象采用大括号表示，这导致了一个问题：如果行首是一个大括号，它到底是表达式还是语句？
+
+        ```js
+        { foo: 123 }
+        ```
+
+        为了避免这种歧义，JavaScript 引擎的做法是，如果遇到这种情况，无法确定是对象还是代码块，一律解释为代码块。
+
+        如果要解释为对象，最好在大括号前加上圆括号。因为圆括号的里面，只能是表达式，所以确保大括号只能解释为对象。
+
+        这种差异在eval语句（作用是对字符串求值）中反映得最明显。
+
+        ```js
+        eval('{foo: 123}') // 123
+        eval('({foo: 123})') // {foo: 123}
+        ```
+
+        上面代码中，如果没有圆括号，eval将其理解为一个代码块；加上圆括号以后，就理解成一个对象。
+
+    - 读取对象的属性，有两种方法，一种是使用点运算符，还有一种是使用方括号运算符。
+
+        ```js
+        var obj = {
+          p: 'Hello World'
+        };
+
+        obj.p // "Hello World"
+        obj['p'] // "Hello World"
+        ```
+
+    - 数字键可以不加引号，因为会自动转成字符串。
+
+        ```js
+        var obj = {
+          0.7: 'Hello World'
+        };
+
+        obj['0.7'] // "Hello World"
+        obj[0.7] // "Hello World"
+        ```
+
+    - 点运算符和方括号运算符，不仅可以用来读取值，还可以用来赋值。
+
+        ```js
+        var obj = {};
+
+        obj.foo = 'Hello';
+        obj['bar'] = 'World';
+        ```
+
+    - 查看一个对象本身的所有属性，可以使用Object.keys方法。
+
+    - delete命令用于删除对象的属性，删除成功后返回true。
+
+    - 只有一种情况，delete命令会返回false，那就是该属性存在，且不得删除。
+
+        ```js
+        var obj = Object.defineProperty({}, 'p', {
+          value: 123,
+          configurable: false
+        });
+
+        obj.p // 123
+        delete obj.p // false
+        ```
+
+    - in运算符用于检查对象是否包含某个属性（注意，检查的是键名，不是键值），如果包含就返回true，否则返回false。它的左边是一个字符串，表示属性名，右边是一个对象。
+
+        ```js
+        var obj = { p: 1 };
+        'p' in obj // true
+        'toString' in obj // true
+        ```
+
+    - in运算符的一个问题是，它不能识别哪些属性是对象自身的，哪些属性是继承的。就像上面代码中，对象obj本身并没有toString属性，但是in运算符会返回true，因为这个属性是继承的。
+
+        这时，可以使用对象的hasOwnProperty方法判断一下，是否为对象自身的属性。
+
+    - for...in循环用来遍历一个对象的全部属性。
+
+    - for...in循环有两个使用注意点。
+
+      - 它遍历的是对象所有可遍历（enumerable）的属性，会跳过不可遍历的属性。
+      - 它不仅遍历对象自身的属性，还遍历继承的属性。
+
+    - 对象都继承了toString属性，但是for...in循环不会遍历到这个属性。
+
+    - 如果继承的属性是可遍历的，那么就会被for...in循环遍历到。但是，一般情况下，都是只想遍历对象自身的属性，所以使用for...in的时候，应该结合使用hasOwnProperty方法，在循环内部判断一下，某个属性是否为对象自身的属性。
+
+        ```js
+        var person = { name: '老张' };
+
+        for (var key in person) {
+          if (person.hasOwnProperty(key)) {
+            console.log(key);
+          }
+        }
+        // name
+        ```
+
+    - with语句的作用是操作同一个对象的多个属性时，提供一些书写的方便。
+
+        ```js
+        // 例一
+        var obj = {
+          p1: 1,
+          p2: 2,
+        };
+        with (obj) {
+          p1 = 4;
+          p2 = 5;
+        }
+        // 等同于
+        obj.p1 = 4;
+        obj.p2 = 5;
+
+        // 例二
+        with (document.links[0]){
+          console.log(href);
+          console.log(title);
+          console.log(style);
+        }
+        // 等同于
+        console.log(document.links[0].href);
+        console.log(document.links[0].title);
+        console.log(document.links[0].style);
+        ```
+
+    - 注意，如果with区块内部有变量的赋值操作，必须是当前对象已经存在的属性，否则会创造一个当前作用域的全局变量。
+
+        ```js
+        var obj = {};
+        with (obj) {
+          p1 = 4;
+          p2 = 5;
+        }
+
+        obj.p1 // undefined
+        p1 // 4
+        ```
+
+    - 因为with区块没有改变作用域，它的内部依然是当前作用域。这造成了with语句的一个很大的弊病，就是绑定对象不明确。
+
+        ```js
+        with (obj) {
+          console.log(x);
+        }
+        ```
+
+        单纯从上面的代码块，根本无法判断x到底是全局变量，还是对象obj的一个属性。这非常不利于代码的除错和模块化，编译器也无法对这段代码进行优化，只能留到运行时判断，这就拖慢了运行速度。因此，建议不要使用with语句，可以考虑用一个临时变量代替with。
+
+        ```js
+        with(obj1.obj2.obj3) {
+          console.log(p1 + p2);
+        }
+
+        // 可以写成
+        var temp = obj1.obj2.obj3;
+        console.log(temp.p1 + temp.p2);
+        ```
+
+9. [函数](https://wangdoc.com/javascript/types/function.html)
