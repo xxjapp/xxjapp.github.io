@@ -809,3 +809,171 @@
         ```
 
 9. [函数](https://wangdoc.com/javascript/types/function.html)
+
+    - 采用函数表达式声明函数时，function命令后面不带有函数名。如果加上函数名，该函数名只在函数体内部有效，在函数体外部无效。
+
+        ```js
+        var print = function x(){
+          console.log(typeof x);
+        };
+
+        x
+        // ReferenceError: x is not defined
+
+        print()
+        // function
+        ```
+
+    - 如果同一个函数被多次声明，后面的声明就会覆盖前面的声明。
+
+        ```js
+        function f() {
+          console.log(1);
+        }
+        f() // 2
+
+        function f() {
+          console.log(2);
+        }
+        f() // 2
+        ```
+
+        上面代码中，后一次的函数声明覆盖了前面一次。而且，由于函数名的提升（参见下文），前一次声明在任何时候都是无效的，这一点要特别注意。
+
+    - JavaScript 语言将函数看作一种值，与其它值（数值、字符串、布尔值等等）地位相同。凡是可以使用值的地方，就能使用函数。比如，可以把函数赋值给变量和对象的属性，也可以当作参数传入其他函数，或者作为函数的结果返回。函数只是一个可以执行的值，此外并无特殊之处。
+
+        由于函数与其他数据类型地位平等，所以在 JavaScript 语言中又称函数为第一等公民。
+
+    - JavaScript 引擎将函数名视同变量名，所以采用function命令声明函数时，整个函数会像变量声明一样，被提升到代码头部。所以，下面的代码不会报错。
+
+        ```js
+        f();
+
+        function f() {}
+        ```
+
+    - 作用域（scope）指的是变量存在的范围。
+
+        在 ES5 的规范中，JavaScript 只有两种作用域：一种是全局作用域，变量在整个程序中一直存在，所有地方都可以读取；另一种是函数作用域，变量只在函数内部存在。
+
+        ES6 又新增了块级作用域，本教程不涉及。
+
+    - 与全局作用域一样，函数作用域内部也会产生“变量提升”现象。var命令声明的变量，不管在什么位置，变量声明都会被提升到函数体的头部。
+
+        ```js
+        function foo(x) {
+          if (x > 100) {
+            var tmp = x - 100;
+          }
+        }
+
+        // 等同于
+        function foo(x) {
+          var tmp;
+          if (x > 100) {
+            tmp = x - 100;
+          };
+        }
+        ```
+
+    - 函数参数如果是原始类型的值（数值、字符串、布尔值），传递方式是传值传递（passes by value）。
+
+    - 如果函数参数是复合类型的值（数组、对象、其他函数），传递方式是传址传递（pass by reference）。也就是说，传入函数的原始值的地址，因此在函数内部修改参数，将会影响到原始值。
+
+        ```js
+        var obj = { p: 1 };
+
+        function f(o) {
+          o.p = 2;
+        }
+        f(obj);
+
+        obj.p // 2
+        ```
+
+    - 如果函数内部修改的，不是参数对象的某个属性，而是替换掉整个参数，这时不会影响到原始值。
+
+        ```js
+        var obj = [1, 2, 3];
+
+        function f(o) {
+          o = [2, 3, 4];
+        }
+        f(obj);
+
+        obj // [1, 2, 3]
+        ```
+
+    - 由于 JavaScript 允许函数有不定数目的参数，所以需要一种机制，可以在函数体内部读取所有参数。这就是arguments对象的由来。
+
+    - 需要注意的是，虽然arguments很像数组，但它是一个对象。数组专有的方法（比如slice和forEach），不能在arguments对象上直接使用。
+
+        如果要让arguments对象使用数组方法，真正的解决方法是将arguments转为真正的数组。下面是两种常用的转换方法：slice方法和逐一填入新数组。
+
+        ```js
+        var args = Array.prototype.slice.call(arguments);
+
+        // 或者
+        var args = [];
+        for (var i = 0; i < arguments.length; i++) {
+          args.push(arguments[i]);
+        }
+        ```
+
+    - 闭包的最大用处有两个，一个是可以读取函数内部的变量，另一个就是让这些变量始终保持在内存中，即闭包可以使得它诞生环境一直存在。
+
+    - 如果eval的参数不是字符串，那么会原样返回。
+
+        ```js
+        eval(123) // 123
+        ```
+
+    - eval没有自己的作用域，都在当前作用域内执行，因此可能会修改当前作用域的变量的值，造成安全问题。
+
+        ```js
+        var a = 1;
+        eval('a = 2');
+
+        a // 2
+        ```
+
+        上面代码中，eval命令修改了外部变量a的值。由于这个原因，eval有安全风险。
+
+    - 为了防止这种风险，JavaScript 规定，如果使用严格模式，eval内部声明的变量，不会影响到外部作用域。
+
+        ```js
+        (function f() {
+          'use strict';
+          eval('var foo = 123');
+          console.log(foo);  // ReferenceError: foo is not defined
+        })()
+        ```
+
+    - 不过，即使在严格模式下，eval依然可以读写当前作用域的变量。
+
+        ```js
+        (function f() {
+          'use strict';
+          var foo = 1;
+          eval('foo = 2');
+          console.log(foo);  // 2
+        })()
+        ```
+
+    - 为了保证eval的别名不影响代码优化，JavaScript 的标准规定，凡是使用别名执行eval，eval内部一律是全局作用域。
+
+        ```js
+        var a = 1;
+
+        function f() {
+          var a = 2;
+          var e = eval;
+          e('console.log(a)');
+        }
+
+        f() // 1
+        ```
+
+        上面代码中，eval是别名调用，所以即使它是在函数中，它的作用域还是全局作用域，因此输出的a为全局变量。这样的话，引擎就能确认e()不会对当前的函数作用域产生影响，优化的时候就可以把这一行排除掉。
+
+10. [数组](https://wangdoc.com/javascript/types/array.html)
