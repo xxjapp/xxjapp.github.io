@@ -977,3 +977,194 @@
         上面代码中，eval是别名调用，所以即使它是在函数中，它的作用域还是全局作用域，因此输出的a为全局变量。这样的话，引擎就能确认e()不会对当前的函数作用域产生影响，优化的时候就可以把这一行排除掉。
 
 10. [数组](https://wangdoc.com/javascript/types/array.html)
+
+    - JavaScript 语言规定，对象的键名一律为字符串，所以，数组的键名其实也是字符串。之所以可以用数值读取，是因为非字符串的键名会被转为字符串。
+
+        ```js
+        var arr = ['a', 'b', 'c'];
+
+        arr['0'] // 'a'
+        arr[0] // 'a'
+        ```
+
+    - length属性是可写的。如果人为设置一个小于当前成员个数的值，该数组的成员会自动减少到length设置的值。
+
+        ```js
+        var arr = [ 'a', 'b', 'c' ];
+        arr.length // 3
+
+        arr.length = 2;
+        arr // ["a", "b"]
+        ```
+
+    - 清空数组的一个有效方法，就是将length属性设为0。
+
+        ```js
+        var arr = [ 'a', 'b', 'c' ];
+
+        arr.length = 0;
+        arr // []
+        ```
+
+    - 值得注意的是，由于数组本质上是一种对象，所以可以为数组添加属性，但是这不影响length属性的值。
+
+        ```js
+        var a = [];
+
+        a['p'] = 'abc';
+        a.length // 0
+
+        a[2.1] = 'abc';
+        a.length // 0
+        ```
+
+        上面代码将数组的键分别设为字符串和小数，结果都不影响length属性。因为，length属性的值就是等于最大的数字键加1，而这个数组没有整数键，所以length属性保持为0。
+
+    - 检查某个键名是否存在的运算符in，适用于对象，也适用于数组。
+
+        ```js
+        var arr = [ 'a', 'b', 'c' ];
+        2 in arr  // true
+        '2' in arr // true
+        4 in arr // false
+        ```
+
+    - for...in循环不仅可以遍历对象，也可以遍历数组，毕竟数组只是一种特殊对象。
+
+        ```js
+        var a = [1, 2, 3];
+
+        for (var i in a) {
+          console.log(a[i]);
+        }
+        // 1
+        // 2
+        // 3
+        ```
+
+    - 但是，for...in不仅会遍历数组所有的数字键，还会遍历非数字键。
+
+        ```js
+        var a = [1, 2, 3];
+        a.foo = true;
+
+        for (var key in a) {
+          console.log(key);
+        }
+        // 0
+        // 1
+        // 2
+        // foo
+        ```
+
+        数组的遍历可以考虑使用for循环或while循环。
+
+        ```js
+        var a = [1, 2, 3];
+
+        // for循环
+        for(var i = 0; i < a.length; i++) {
+          console.log(a[i]);
+        }
+
+        // while循环
+        var i = 0;
+        while (i < a.length) {
+          console.log(a[i]);
+          i++;
+        }
+
+        var l = a.length;
+        while (l--) {
+          console.log(a[l]);
+        }
+        ```
+
+    - 数组的forEach方法，也可以用来遍历数组，详见《标准库》的 Array 对象一章。
+
+        ```js
+        var colors = ['red', 'green', 'blue'];
+        colors.forEach(function (color) {
+          console.log(color);
+        });
+        // red
+        // green
+        // blue
+        ```
+
+    - 如果一个对象的所有键名都是正整数或零，并且有length属性，那么这个对象就很像数组，语法上称为“类似数组的对象”（array-like object）。
+
+        ```js
+        var obj = {
+          0: 'a',
+          1: 'b',
+          2: 'c',
+          length: 3
+        };
+
+        obj[0] // 'a'
+        obj[1] // 'b'
+        obj.length // 3
+        obj.push('d') // TypeError: obj.push is not a function
+        ```
+
+    - 典型的“类似数组的对象”是函数的arguments对象，以及大多数 DOM 元素集，还有字符串。
+
+        ```js
+        // arguments对象
+        function args() { return arguments }
+        var arrayLike = args('a', 'b');
+
+        arrayLike[0] // 'a'
+        arrayLike.length // 2
+        arrayLike instanceof Array // false
+
+        // DOM元素集
+        var elts = document.getElementsByTagName('h3');
+        elts.length // 3
+        elts instanceof Array // false
+
+        // 字符串
+        'abc'[1] // 'b'
+        'abc'.length // 3
+        'abc' instanceof Array // false
+        ```
+
+    - 数组的slice方法可以将“类似数组的对象”变成真正的数组。
+
+        ```js
+        var arr = Array.prototype.slice.call(arrayLike);
+        ```
+
+    - 除了转为真正的数组，“类似数组的对象”还有一个办法可以使用数组的方法，就是通过call()把数组的方法放到对象上面。
+
+        ```js
+        function print(value, index) {
+          console.log(index + ' : ' + value);
+        }
+
+        Array.prototype.forEach.call(arrayLike, print);
+        ```
+
+        上面代码中，arrayLike代表一个类似数组的对象，本来是不可以使用数组的forEach()方法的，但是通过call()，可以把forEach()嫁接到arrayLike上面调用。
+
+    - 下面的例子就是通过这种方法，在arguments对象上面调用forEach方法。
+
+        ```js
+        // forEach 方法
+        function logArgs() {
+          Array.prototype.forEach.call(arguments, function (elem, i) {
+            console.log(i + '. ' + elem);
+          });
+        }
+
+        // 等同于 for 循环
+        function logArgs() {
+          for (var i = 0; i < arguments.length; i++) {
+            console.log(i + '. ' + arguments[i]);
+          }
+        }
+        ```
+
+11. [算术运算符](https://wangdoc.com/javascript/operators/arithmetic.html)
+
