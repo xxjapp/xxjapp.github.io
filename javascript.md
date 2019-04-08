@@ -1471,3 +1471,69 @@
         void 0 // undefined
         void(0) // undefined
         ```
+
+        上面是void运算符的两种写法，都正确。建议采用后一种形式，即总是使用圆括号。因为void运算符的优先性很高，如果不使用括号，容易造成错误的结果。比如，void 4 + 7实际上等同于(void 4) + 7。
+
+    - 这个运算符的主要用途是浏览器的书签工具（Bookmarklet），以及在超级链接中插入代码防止网页跳转。
+
+        请看下面的代码。
+
+        ```js
+        <script>
+        function f() {
+          console.log('Hello World');
+        }
+        </script>
+        <a href="http://example.com" onclick="f(); return false;">点击</a>
+        ```
+
+        上面代码中，点击链接后，会先执行onclick的代码，由于onclick返回false，所以浏览器不会跳转到 example.com。
+
+        void运算符可以取代上面的写法。
+
+        ```js
+        <a href="javascript: void(f())">文字</a>
+        ```
+
+    - 逗号运算符用于对两个表达式求值，并返回后一个表达式的值。
+
+        ```js
+        'a', 'b' // "b"
+
+        var x = 0;
+        var y = (x++, 10);
+        x // 1
+        y // 10
+        ```
+
+    - 对于优先级别相同的运算符，大多数情况，计算顺序总是从左到右，这叫做运算符的“左结合”（left-to-right associativity），即从左边开始计算。
+
+        ```js
+        x + y + z
+        ```
+
+        上面代码先计算最左边的x与y的和，然后再计算与z的和。
+
+    - 但是少数运算符的计算顺序是从右到左，即从右边开始计算，这叫做运算符的“右结合”（right-to-left associativity）。其中，最主要的是赋值运算符（=）和三元条件运算符（?:）。
+
+        ```js
+        w = x = y = z;
+        q = a ? b : c ? d : e ? f : g;
+        ```
+
+        上面代码的运算结果，相当于下面的样子。
+
+        ```js
+        w = (x = (y = z));
+        q = a ? b : (c ? d : (e ? f : g));
+        ```
+
+        指数运算符（**）也是右结合的。
+
+        ```js
+        // 相当于 2 ** (3 ** 2)
+        2 ** 3 ** 2
+        // 512
+        ```
+
+16. [数据类型的转换](https://wangdoc.com/javascript/features/conversion.html)
