@@ -1709,3 +1709,58 @@
         ```
 
 17. [错误处理机制](https://wangdoc.com/javascript/features/error.html)
+
+    - JavaScript 语言标准只提到，Error实例对象必须有message属性，表示出错时的提示信息，没有提到其他属性。大多数 JavaScript 引擎，对Error实例还提供name和stack属性，分别表示错误的名称和错误的堆栈，但它们是非标准的，不是每种实现都有。
+
+      - message：错误提示信息
+      - name：错误名称（非标准属性）
+      - stack：错误的堆栈（非标准属性）
+
+    - stack属性用来查看错误发生时的堆栈。
+
+        ```js
+        function throwit() {
+          throw new Error('');
+        }
+
+        function catchit() {
+          try {
+            throwit();
+          } catch(e) {
+            console.log(e.stack); // print stack trace
+          }
+        }
+
+        catchit()
+        // Error
+        //    at throwit (~/examples/throwcatch.js:9:11)
+        //    at catchit (~/examples/throwcatch.js:3:9)
+        //    at repl:1:5
+        ```
+
+    - Error实例对象是最一般的错误类型，在它的基础上，JavaScript 还定义了其他6种错误对象。也就是说，存在Error的6个派生对象。
+
+      - SyntaxError对象是解析代码时发生的语法错误。
+      - ReferenceError对象是引用一个不存在的变量时发生的错误。
+      - RangeError对象是一个值超出有效范围时发生的错误。主要有几种情况，一是数组长度为负数，二是Number对象的方法参数超出范围，以及函数堆栈超过最大值。
+    TypeError对象是变量或参数不是预期类型时发生的错误。比如，对字符串、布尔值、数值等原始类型的值使用new命令，就会抛出这种错误，因为new命令的参数应该是  - 一个构造函数。
+      - URIError对象是 URI 相关函数的参数不正确时抛出的错误，主要涉及encodeURI()、decodeURI()、encodeURIComponent()、decodeURIComponent()、escape()和unescape()这六个函数。
+      - eval函数没有被正确执行时，会抛出EvalError错误。该错误类型已经不再使用了，只是为了保证与以前代码兼容，才继续保留。
+
+    - 除了 JavaScript 原生提供的七种错误对象，还可以定义自己的错误对象。
+
+        ```js
+        function UserError(message) {
+          this.message = message || '默认信息';
+          this.name = 'UserError';
+        }
+
+        UserError.prototype = new Error();
+        UserError.prototype.constructor = UserError;
+        ```
+
+        上面代码自定义一个错误对象UserError，让它继承Error对象。然后，就可以生成这种自定义类型的错误了。
+
+        ```js
+        new UserError('这是自定义的错误！');
+        ```
