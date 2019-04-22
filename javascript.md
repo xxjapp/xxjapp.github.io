@@ -1743,7 +1743,7 @@
       - SyntaxError对象是解析代码时发生的语法错误。
       - ReferenceError对象是引用一个不存在的变量时发生的错误。
       - RangeError对象是一个值超出有效范围时发生的错误。主要有几种情况，一是数组长度为负数，二是Number对象的方法参数超出范围，以及函数堆栈超过最大值。
-    TypeError对象是变量或参数不是预期类型时发生的错误。比如，对字符串、布尔值、数值等原始类型的值使用new命令，就会抛出这种错误，因为new命令的参数应该是  - 一个构造函数。
+      - TypeError对象是变量或参数不是预期类型时发生的错误。比如，对字符串、布尔值、数值等原始类型的值使用new命令，就会抛出这种错误，因为new命令的参数应该是一个构造函数。
       - URIError对象是 URI 相关函数的参数不正确时抛出的错误，主要涉及encodeURI()、decodeURI()、encodeURIComponent()、decodeURIComponent()、escape()和unescape()这六个函数。
       - eval函数没有被正确执行时，会抛出EvalError错误。该错误类型已经不再使用了，只是为了保证与以前代码兼容，才继续保留。
 
@@ -1764,3 +1764,237 @@
         ```js
         new UserError('这是自定义的错误！');
         ```
+
+    - throw语句的作用是手动中断程序执行，抛出一个错误。
+
+        ```js
+        if (x <= 0) {
+          throw new Error('x 必须为正数');
+        }
+        // Uncaught ReferenceError: x is not defined
+        ```
+
+    - throw也可以抛出自定义错误。
+
+        ```js
+        function UserError(message) {
+          this.message = message || '默认信息';
+          this.name = 'UserError';
+        }
+
+        throw new UserError('出错了！');
+        // Uncaught UserError {message: "出错了！", name: "UserError"}
+        ```
+
+    - 实际上，throw可以抛出任何类型的值。也就是说，它的参数可以是任何值。
+
+        ```js
+        // 抛出一个字符串
+        throw 'Error！';
+        // Uncaught Error！
+
+        // 抛出一个数值
+        throw 42;
+        // Uncaught 42
+
+        // 抛出一个布尔值
+        throw true;
+        // Uncaught true
+
+        // 抛出一个对象
+        throw {
+          toString: function () {
+            return 'Error!';
+          }
+        };
+        // Uncaught {toString: ƒ}
+        ```
+
+    - 一旦发生错误，程序就中止执行了。JavaScript 提供了try...catch结构，允许对错误进行处理，选择是否往下执行。
+
+        ```js
+        try {
+          throw new Error('出错了!');
+        } catch (e) {
+          console.log(e.name + ": " + e.message);
+          console.log(e.stack);
+        }
+        // Error: 出错了!
+        //   at <anonymous>:3:9
+        //   ...
+        ```
+
+    - 为了捕捉不同类型的错误，catch代码块之中可以加入判断语句。
+
+        ```js
+        try {
+          foo.bar();
+        } catch (e) {
+          if (e instanceof EvalError) {
+            console.log(e.name + ": " + e.message);
+          } else if (e instanceof RangeError) {
+            console.log(e.name + ": " + e.message);
+          }
+          // ...
+        }
+        ```
+
+        上面代码中，catch捕获错误之后，会判断错误类型（EvalError还是RangeError），进行不同的处理。
+
+    - try...catch结构允许在最后添加一个finally代码块，表示不管是否出现错误，都必需在最后运行的语句。
+
+        ```js
+        function cleansUp() {
+          try {
+            throw new Error('出错了……');
+            console.log('此行不会执行');
+          } finally {
+            console.log('完成清理工作');
+          }
+        }
+
+        cleansUp()
+        // 完成清理工作
+        // Uncaught Error: 出错了……
+        //    at cleansUp (<anonymous>:3:11)
+        //    at <anonymous>:10:1
+        ```
+
+    - 下面是finally代码块用法的典型场景。
+
+        ```js
+        openFile();
+
+        try {
+          writeFile(Data);
+        } catch(e) {
+          handleError(e);
+        } finally {
+          closeFile();
+        }
+        ```
+
+    - 下面的例子充分反映了try...catch...finally这三者之间的执行顺序。
+
+        ```js
+        function f() {
+          try {
+            console.log(0);
+            throw 'bug';
+          } catch(e) {
+            console.log(1);
+            return true; // 这句原本会延迟到 finally 代码块结束再执行
+            console.log(2); // 不会运行
+          } finally {
+            console.log(3);
+            return false; // 这句会覆盖掉前面那句 return
+            console.log(4); // 不会运行
+          }
+
+          console.log(5); // 不会运行
+        }
+
+        var result = f();
+        // 0
+        // 1
+        // 3
+
+        result
+        // false
+        ```
+
+18. [编程风格](https://wangdoc.com/javascript/features/style.html)
+
+    - 区块起首的大括号的位置，有许多不同的写法。最流行的有两种，一种是起首的大括号另起一行。
+
+        ```js
+        block
+        {
+          // ...
+        }
+        ```
+
+        另一种是起首的大括号跟在关键字的后面。
+
+        ```js
+        block {
+          // ...
+        }
+        ```
+
+        一般来说，这两种写法都可以接受。但是，JavaScript 要使用后一种，因为 JavaScript 会自动添加句末的分号，导致一些难以察觉的错误。
+
+        ```js
+        return
+        {
+          key: value
+        };
+
+        // 相当于
+        return;
+        {
+          key: value
+        };
+        ```
+
+        上面的代码的原意，是要返回一个对象，但实际上返回的是undefined，因为 JavaScript 自动在return语句后面添加了分号。为了避免这一类错误，需要写成下面这样。
+
+        ```js
+        return {
+          key : value
+        };
+        ```
+
+        因此，表示区块起首的大括号，不要另起一行。
+
+    - 由于解释引擎自动添加分号的行为难以预测，因此编写代码的时候不应该省略行尾的分号。
+
+    - JavaScript 最大的语法缺点，可能就是全局变量对于任何一个代码块，都是可读可写。这对代码的模块化和重复使用，非常不利。
+
+    - 建议不要使用相等运算符（==），只使用严格相等运算符（===）。
+
+19. [console 对象与控制台](https://wangdoc.com/javascript/features/console.html)
+
+    - 如果第一个参数是格式字符串（使用了格式占位符），console.log方法将依次用后面的参数替换占位符，然后再进行输出。
+
+        ```js
+        console.log(' %s + %s = %s', 1, 1, 2)
+        //  1 + 1 = 2
+        ```
+
+    - console.log方法支持以下占位符，不同类型的数据必须使用对应的占位符。
+
+      - %s 字符串
+      - %d 整数
+      - %i 整数
+      - %f 浮点数
+      - %o 对象的链接
+      - %c CSS 格式字符串
+
+    - 使用%c占位符时，对应的参数必须是 CSS 代码，用来对输出内容进行 CSS 渲染。
+
+        ```js
+        console.log(
+          '%cThis text is styled!',
+          'color: red; background: yellow; font-size: 24px;'
+        )
+        ```
+
+    - console.info是console.log方法的别名，用法完全一样。只不过console.info方法会在输出信息的前面，加上一个蓝色图标。
+
+    - console对象的所有方法，都可以被覆盖。因此，可以按照自己的需要，定义console.log方法。
+
+        ```js
+        ['log', 'info', 'warn', 'error'].forEach(function(method) {
+          console[method] = console[method].bind(
+            console,
+            new Date().toISOString()
+          );
+        });
+
+        console.log("出错了！");
+        // 2014-05-18T09:00.000Z 出错了！
+        ```
+
+        上面代码表示，使用自定义的console.log方法，可以在显示结果添加当前时间。
+
